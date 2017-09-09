@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Overwatch: ideal reticle size for projectiles</title>
+  <meta charset="utf-8">
+  <script src="./main.js" defer></script>
+  <style>
+    html {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+      font-family: sans-serif;
+      font-size: 16px;
+      color: #333;
+    }
+
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+
+    body {
+      width: 800px;
+      padding: 0;
+      margin: 0 auto;
+    }
+
+    header {
+      font-family: Georgia, serif;
+      text-align: center;
+      margin: 1.8em 0;
+    }
+    h1 {
+      margin: 0;
+      color: #f8a94b;
+    }
+    header p {
+      margin: 0;
+      color: #555;
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    label {
+      font-size: .8em;
+    }
+    input {
+      width: 100%;
+      padding: 4px 8px;
+      margin: 4px 0;
+      border: 1px solid #eee;
+      border-radius: 3px;
+      background-color: hsl(210, 20%, 96%);
+      font-weight: bold;
+      color: hsl(210, 20%, 40%);
+    }
+
+    hr {
+      border: none;
+      border-top: medium double #bbb;
+      margin: 1em auto;
+      width: 75%;
+    }
+
+    table {
+      width: 100%;
+    }
+    td {
+      padding: 8px 4px;
+      vertical-align: top;
+    }
+    tr:first-child > td {
+      padding-top: 0;
+    }
+    tr:last-child > td {
+      padding-bottom: 0;
+    }
+    td:first-child {
+      text-align: right;
+    }
+    td:last-child {
+      font-family: monospace;
+    }
+
+    ul,
+    p {
+      line-height: 1.4;
+    }
+
+    footer {
+      font-size: 2em;
+      line-height: 2;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Overwatch: ideal reticle size for projectiles</h1>
+    <p>Target lead and reticle calculations</p>
+  </header>
+
+  <label>Horizontal resolution:</label>
+  <input type="number" name="hres" value="1920" step="1">
+  <label>Field of view:</label>
+  <input type="number" name="fov" value="103" min="80" max="103" step="1">
+  <label>Target velocity (meters per second):</label>
+  <input type="number" name="vt" value="5.5">
+  <label>Projectile velocity (meters per second):</label>
+  <input type="number" name="vp" value="90">
+
+  <hr>
+
+  <table>
+    <tbody>
+      <tr>
+        <td>Ideal reticle size:</td>
+        <td><span id="reticle-size"></span> <span id="reticle-details">(<span id="reticle-gap"></span> center gap + <span id="reticle-length"></span> crosshair length)</span><span id="reticle-too-large">(too large)</span></td>
+      </tr>
+      <tr>
+        <td>Maximum lead angle:</td>
+        <td>&plusmn;<span id="max-lead-angle"></span>&deg;</td>
+      </tr>
+      <tr>
+        <td>Maximum lead in pixels:</td>
+        <td>&plusmn;<span id="max-lead-px"></span>px</td>
+      </tr>
+      <tr>
+        <td>Lead angle/pixels at various impact angles:</td>
+        <td id="various-angles"></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>Notes</h2>
+
+  <ul>
+    <li><strong>This only works for projectiles that travel straight, and at a constant velocity.</strong></li>
+    <li><strong>You don't need to lead more if the target is farther away.</strong> For the same angle, target velocity and projectile velocity, the lead angle will always be the same. Think of it as a <a href="./fig0.png">triangle with the following corners: player, target, and impact</a>. If the distance between the player and the target is doubled, then the target and the projectile will travel twice farther or twice longer, resulting in the same three angles.</li>
+    <li>Most heroes run at <strong>5.5m/s</strong>, except for Tracer and Genji who run at <strong>6m/s</strong>.</li>
+    <li>All heroes run backwards slower by 10%: 4.95m/s, or 5.4m/s for Tracer and Genji.</li>
+    <li>You could extend the crosshair length based on the running speed of Tracer and Genji, or the speed of heroes running with Lúcio's speed boost.</li>
+    <li>The circle reticle is useful when aiming from high ground, or against a flying Phara.</li>
+    <li>You can confirm the experiment by strafing left or right, and firing: the projectiles should stay on the edge of the reticle. This is useful if you don't know the velocity of your projectiles, so you can get a somewhat accurate estimate.</li>
+    <li>The various wikis have generally incorrect or outdated projectile speeds. <a href="https://imgur.com/a/6yxGu#8OOacwX" target="_blank">This</a> is a more useful but limited resource.</li>
+  </ul>
+
+  <hr>
+
+  <h2>Simple geometry</h2>
+
+  <dl>
+    <dt>hres:</dt> <dd>horizontal resolution (pixels)</dd>
+    <dt>fov:</dt> <dd>horizontal field of view (&deg;)</dd>
+    <dt>Vt:</dt> <dd>target velocity (m/s)</dd>
+    <dt>Vp:</dt> <dd>projectile velocity (m/s)</dd>
+    <dt>Dpt:</dt> <dd>initial distance between player and target (m)</dd>
+    <dt>A:</dt> <dd>impact angle</dd>
+    <dt>L:</dt> <dd>lead angle</dd>
+    <dt>Lpx:</dt> <dd>lead in pixels</dd>
+  </dl>
+
+  <p>Knowing that projectiles move much faster than our targets, it's safe to assume that the maximum impact angle will generally be around 90&deg;, and we get a right triangle. We have enough data to use basic <a href="https://en.wikipedia.org/wiki/Trigonometry" target="_blank">trigonometry</a> and get the lead angle. <a href="./fig1.png">Fig. 1</a></p>
+  <pre>L = arctan(Vt / Vp)</pre>
+  <p>Now that we have the lead angle, we can deduce how many pixels this represents in the actual game: ratio of the angle to the FOV times the resolution.  <a href="./fig2.png">Fig. 2</a></p>
+  <pre>Lpx = tan(L) / tan(fov / 2) &times; (hres / 2)</pre>
+  <p>simplified:</p>
+  <pre>Lpx = (Vt / Vp) / tan(fov / 2) &times; (hres / 2)</pre>
+  <p>Knowing this we can now get the ideal reticle. It's important to know what the units in the reticle settings correspond to 1px at 1080p, so hres is set to 1920. Then we simply need to multiply Lpx by 2, and we can get the desired reticle size.</p>
+  <p>What about different impact angles? Without a right triangle we first need to use the law of cosines to get <q>Dpt</q>.</p>
+  <pre>Dpt = &radic;(Vt<sup>2</sup> + Vp<sup>2</sup> - 2 &times; Vt &times; Vp &times; cos(A))</pre>
+  <p>We follow up by using the law of sines to get the lead angle.</p>
+  <pre>L = arcsin(sin(A) &times; Vt / Dpt)</pre>
+  <p>And we finish by translating the lead angle to pixels, just like we did before.</p>
+  <pre>Lpx = tan(L) / tan(fov / 2) &times; (hres / 2)</pre>
+  <p>ezpzlmnsqz</p>
+</body>
+</html>
